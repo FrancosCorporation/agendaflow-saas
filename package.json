@@ -1,12 +1,21 @@
 {
-  "name": "agendaflow-saas",
-  "version": "0.1.0",
-  "description": "SaaS de agendamentos multi-tenant: CRUD completo (agendar/editar/cancelar/deletar) + JWT + conflito de horario",
-  "main": "server.js",
-  "type": "module",
-  "license": "MIT",
-  "author": "Rodolfo Franco (FrancosCorporation)",
-  "scripts": { "start": "node server.js", "test": "NODE_ENV=test node --test test/nucleo-test.mjs" },
-  "dependencies": { "bcryptjs": "^2.4.3", "express": "^4.21.0", "jsonwebtoken": "^9.0.2" },
-  "engines": { "node": ">=22.5.0" }
+ "name": "agendaflow-saas",
+ "version": "0.1.0",
+ "description": "SaaS de agendamentos multi-tenant: CRUD completo (agendar/editar/cancelar/deletar) + JWT + conflito de horario",
+ "main": "server.js",
+ "type": "module",
+ "license": "MIT",
+ "author": "Rodolfo Franco (FrancosCorporation)",
+ "scripts": {
+  "start": "node server.js",
+  "test": "NODE_ENV=test node --test test/nucleo-test.mjs && NODE_ENV=test node --test test/m2-test.mjs"
+ },
+ "dependencies": {
+  "bcryptjs": "^2.4.3",
+  "express": "^4.21.0",
+  "jsonwebtoken": "^9.0.2"
+ },
+ "engines": {
+  "node": ">=22.5.0"
+ }
 }

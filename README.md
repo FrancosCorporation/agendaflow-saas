@@ -1,6 +1,6 @@
 # AgendaFlow — Multi-tenant Scheduling SaaS
 
-![Status](https://img.shields.io/badge/M1-funcionando%20(7%2F7%20testes)-brightgreen)
+![Status](https://img.shields.io/badge/M1%20%2B%20M2-funcionando%20(12%2F12%20testes)-brightgreen)
 ![CI](https://img.shields.io/badge/CI-test%20%2B%20license%20check-blue)
 ![Node](https://img.shields.io/badge/Node-%3E%3D18-green?logo=node.js&logoColor=white)
 ![MongoDB](https://img.shields.io/badge/MongoDB-Mongoose-47A248?logo=mongodb&logoColor=white)
