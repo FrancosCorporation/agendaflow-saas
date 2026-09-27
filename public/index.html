@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AgendaFlow — painel do dono</title>
+  <style>
+    :root { --fundo:#0f1318; --carta:#1a2027; --borda:#2c3540; --texto:#e8edf2; --suave:#8b98a5; --verde:#2ea043; --vermelho:#f85149; --azul:#388bfd; --amarelo:#d29922; }
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body { font-family:"Segoe UI",system-ui,Arial,sans-serif; background:var(--fundo); color:var(--texto); min-height:100vh; }
+    .login { min-height:100vh; display:flex; align-items:center; justify-content:center; }
+    .login-caixa { background:var(--carta); border:1px solid var(--borda); border-radius:14px; padding:32px; display:flex; flex-direction:column; gap:10px; width:min(340px,92vw); }
+    .login-caixa h1 { font-size:22px; text-align:center; }
+    .login-caixa input { background:var(--fundo); border:1px solid var(--borda); color:var(--texto); border-radius:8px; padding:12px 14px; font-size:14px; }
+    button { background:var(--verde); border:none; color:#fff; font-weight:700; border-radius:8px; padding:12px 16px; font-size:13px; cursor:pointer; }
+    button:hover { filter:brightness(1.1); }
+    .erro { color:var(--vermelho); font-size:13px; text-align:center; }
+    #app { padding:18px; max-width:900px; margin:0 auto; }
+    .topo { display:flex; align-items:center; gap:12px; margin-bottom:16px; flex-wrap:wrap; }
+    .topo h1 { font-size:18px; margin-right:auto; }
+    .novo { background:var(--carta); border:1px solid var(--borda); border-radius:10px; padding:14px; display:flex; gap:8px; flex-wrap:wrap; margin-bottom:14px; }
+    .novo input { background:var(--fundo); border:1px solid var(--borda); color:var(--texto); border-radius:6px; padding:8px 10px; font-size:13px; }
+    table { width:100%; border-collapse:collapse; font-size:13px; }
+    th, td { border:1px solid var(--borda); padding:8px 10px; text-align:left; }
+    th { background:var(--carta); color:var(--suave); }
+    .badge { padding:2px 10px; border-radius:999px; font-size:11px; font-weight:700; }
+    .agendado { background:var(--azul); color:#fff; } .concluido { background:var(--verde); color:#fff; } .cancelado { background:var(--amarelo); color:#111; }
+    .btn-mini { padding:5px 10px; font-size:11px; margin:2px; }
+    .vermelho { background:var(--vermelho); } .amarelo { background:var(--amarelo); color:#111; }
+  </style>
+</head>
+<body>
+  <!-- LOGIN -->
+  <div id="tela-login" class="login">
+    <div class="login-caixa">
+      <h1>🗓️ AgendaFlow</h1>
+      <input id="inp-nome" type="text" placeholder="nome (novo cadastro)" autocomplete="off">
+      <input id="inp-email" type="email" placeholder="e-mail" autocomplete="off">
+      <input id="inp-senha" type="password" placeholder="senha (mín. 6)">
+      <button id="btn-entrar">Entrar / Criar conta</button>
+      <p id="login-erro" class="erro" hidden></p>
+    </div>
+  </div>
+
+  <!-- PAINEL -->
+  <div id="app" hidden>
+    <div class="topo">
+      <h1>🗓️ AgendaFlow — <span id="org-nome">—</span></h1>
+      <button id="btn-criar-org" class="btn-mini amarelo">+ organização</button>
+      <button id="btn-sair" class="btn-mini vermelho">sair</button>
+    </div>
+
+    <div class="novo">
+      <input id="prof-nome" placeholder="novo profissional" size="14">
+      <input id="prof-area" placeholder="área (corte, consulta...)" size="12">
+      <button id="btn-prof">+ profissional</button>
+    </div>
+
+    <div class="novo">
+      <input id="ag-prof" placeholder="id do profissional" size="18">
+      <input id="ag-nome" placeholder="nome do cliente" size="14">
+      <input id="ag-email" placeholder="e-mail do cliente" size="16">
+      <input id="ag-data" type="date">
+      <input id="ag-hora" type="time" value="10:00">
+      <button id="btn-agendar">Agendar</button>
+    </div>
+
+    <table>
+      <thead><tr><th>Cliente</th><th>Profissional</th><th>Data</th><th>Hora</th><th>Status</th><th>Ações</th></tr></thead>
+      <tbody id="lista"></tbody>
+    </table>
+  </div>
+
+  <script>
+    const $ = (s) => document.querySelector(s);
+    let TOKEN = localStorage.getItem('agendaflow_token');
+    let ORG = null;
+    let PROFS = [];
+
+    async function api(caminho, opts = {}) {
+      const r = await fetch('/api' + caminho, {
+        ...opts,
+        headers: { 'Content-Type': 'application/json', ...(TOKEN ? { Authorization: `Bearer ${TOKEN}` } : {}) },
+        body: opts.body ? JSON.stringify(opts.body) : undefined
+      });
+      const dados = await r.json().catch(() => ({}));
+      if (!r.ok) throw Object.assign(new Error(dados.erro?.mensagem || r.statusText), { status: r.status });
+      return dados;
+    }
+
+    $('#btn-entrar').addEventListener('click', async () => {
+      const nome = $('#inp-nome').value.trim(), email = $('#inp-email').value.trim(), senha = $('#inp-senha').value;
+      try {
+        let dados;
+        try { dados = await api('/login', { method: 'POST', body: { email, senha } }); }
+        catch (e) {
+          if (e.status === 401 && nome && senha.length >= 6) {
+            await api('/register', { method: 'POST', body: { nome, email, senha } });
+            dados = await api('/login', { method: 'POST', body: { email, senha } });
+          } else throw e;
+        }
+        TOKEN = dados.token;
+        localStorage.setItem('agendaflow_token', TOKEN);
+        $('#tela-login').hidden = true;
+        $('#app').hidden = false;
+        iniciar();
+      } catch (e) { const el = $('#login-erro'); el.hidden = false; el.textContent = e.message; }
+    });
+
+    $('#btn-sair').addEventListener('click', () => { localStorage.clear(); location.reload(); });
+    $('#btn-criar-org').addEventListener('click', async () => {
+      const nome = prompt('Nome da organização:');
+      if (!nome) return;
+      ORG = await api('/orgs', { method: 'POST', body: { nome } });
+      $('#org-nome').textContent = nome;
+    });
+    $('#btn-prof').addEventListener('click', async () => {
+      const nome = $('#prof-nome').value.trim();
+      if (!nome || !ORG) { alert('crie uma organização primeiro'); return; }
+      await api(`/orgs/${ORG.id}/profissionais`, { method: 'POST', body: { nome, area: $('#prof-area').value } });
+      $('#prof-nome').value = '';
+      carregarProfs();
+    });
+    $('#btn-agendar').addEventListener('click', async () => {
+      try {
+        await api('/agendamentos', { method: 'POST', body: {
+          orgId: ORG?.id, profissionalId: $('#ag-prof').value.trim(),
+          clienteEmail: $('#ag-email').value.trim(), clienteNome: $('#ag-nome').value.trim(),
+          data: $('#ag-data').value, hora: $('#ag-hora').value } });
+        carregarAgenda();
+      } catch (e) { alert(e.message); }
+    });
+
+    async function carregarProfs() {
+      if (!ORG) return;
+      PROFS = await api(`/orgs/${ORG.id}/profissionais`);
+      $('#ag-prof').value = PROFS[0]?.id || '';
+    }
+    async function carregarAgenda() {
+      if (!ORG) return;
+      const ags = await api(`/agendamentos?orgId=${ORG.id}`);
+      const nomes = Object.fromEntries(PROFS.map((p) => [p.id, p.nome]));
+      document.getElementById('lista').innerHTML = ags.map((a) => `
+        <tr>
+          <td>${a.cliente_nome}</td><td>${nomes[a.profissional_id] || '—'}</td>
+          <td>${a.data}</td><td>${a.hora}</td>
+          <td><span class="badge ${a.status}">${a.status}</span></td>
+          <td>
+            ${a.status === 'agendado' ? `
+              <button class="btn-mini amarelo" onclick="editar('${a.id}', '${a.data}', '${a.hora}')">editar</button>
+              <button class="btn-mini" onclick="cancelar('${a.id}')">cancelar</button>` : ''}
+            <button class="btn-mini vermelho" onclick="deletar('${a.id}')">deletar</button>
+          </td>
+        </tr>`).join('');
+    }
+    async function editar(id, data, hora) {
+      const novaHora = prompt('Nova hora (HH:MM):', hora);
+      if (!novaHora) return;
+      try { await api(`/agendamentos/${id}`, { method: 'PATCH', body: { hora: novaHora } }); carregarAgenda(); }
+      catch (e) { alert(e.message); }
+    }
+    async function cancelar(id) { await api(`/agendamentos/${id}/cancelar`, { method: 'POST' }); carregarAgenda(); }
+    async function deletar(id) {
+      if (!confirm('Deletar de verdade?')) return;
+      await api(`/agendamentos/${id}`, { method: 'DELETE' });
+      carregarAgenda();
+    }
+
+    async function iniciar() {
+      ORG = null;
+      $('#org-nome').textContent = 'crie uma organização';
+      carregarAgenda();
+    }
+    if (TOKEN) { $('#tela-login').hidden = true; $('#app').hidden = false; iniciar(); }
+  </script>
+</body>
+</html>

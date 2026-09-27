@@ -1,6 +1,7 @@
 # AgendaFlow — Multi-tenant Scheduling SaaS
 
-![Status](https://img.shields.io/badge/status-em%20constru%C3%A7%C3%A3o-orange)
+![Status](https://img.shields.io/badge/M1-funcionando%20(7%2F7%20testes)-brightgreen)
+![CI](https://img.shields.io/badge/CI-test%20%2B%20license%20check-blue)
 ![Node](https://img.shields.io/badge/Node-%3E%3D18-green?logo=node.js&logoColor=white)
 ![MongoDB](https://img.shields.io/badge/MongoDB-Mongoose-47A248?logo=mongodb&logoColor=white)
 ![React](https://img.shields.io/badge/React-18-61DAFB?logo=react&logoColor=black)
@@ -50,8 +51,9 @@ docker compose up   # app + mongo
 
 - [wasp-lang/open-saas](https://github.com/wasp-lang/open-saas) (MIT, 16k⭐) — SaaS
   patterns: org/user/plan entities, admin dashboard, Stripe test flow
-- My boot-tested foundations: Marcacao_Horario (front + back), api_authentication,
-  api_nest_run_container (JWT patterns)
+- My boot-tested foundations: Marcacao_Horario (front + back, public) and
+  api_nest_run_container (public, JWT patterns) — simplified new implementation,
+  zero private business logic
 
 ## License
 

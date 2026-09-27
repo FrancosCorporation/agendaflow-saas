@@ -1,0 +1,14 @@
+services:
+  agendaflow:
+    build: .
+    ports:
+      - "3111:3111"
+    environment:
+      JWT_SECRET: ${JWT_SECRET:-troque-em-producao}
+      AGENDAFLOW_DB: /data/agendaflow.db
+    volumes:
+      - dados:/data
+    restart: unless-stopped
+
+volumes:
+  dados:
