@@ -1,177 +1,483 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>AgendaFlow — painel do dono</title>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f4f7f6">
+  <title>AgendaFlow — agenda do seu negócio</title>
   <style>
-    :root { --fundo:#0f1318; --carta:#1a2027; --borda:#2c3540; --texto:#e8edf2; --suave:#8b98a5; --verde:#2ea043; --vermelho:#f85149; --azul:#388bfd; --amarelo:#d29922; }
-    * { margin:0; padding:0; box-sizing:border-box; }
-    body { font-family:"Segoe UI",system-ui,Arial,sans-serif; background:var(--fundo); color:var(--texto); min-height:100vh; }
-    .login { min-height:100vh; display:flex; align-items:center; justify-content:center; }
-    .login-caixa { background:var(--carta); border:1px solid var(--borda); border-radius:14px; padding:32px; display:flex; flex-direction:column; gap:10px; width:min(340px,92vw); }
-    .login-caixa h1 { font-size:22px; text-align:center; }
-    .login-caixa input { background:var(--fundo); border:1px solid var(--borda); color:var(--texto); border-radius:8px; padding:12px 14px; font-size:14px; }
-    button { background:var(--verde); border:none; color:#fff; font-weight:700; border-radius:8px; padding:12px 16px; font-size:13px; cursor:pointer; }
-    button:hover { filter:brightness(1.1); }
-    .erro { color:var(--vermelho); font-size:13px; text-align:center; }
-    #app { padding:18px; max-width:900px; margin:0 auto; }
-    .topo { display:flex; align-items:center; gap:12px; margin-bottom:16px; flex-wrap:wrap; }
-    .topo h1 { font-size:18px; margin-right:auto; }
-    .novo { background:var(--carta); border:1px solid var(--borda); border-radius:10px; padding:14px; display:flex; gap:8px; flex-wrap:wrap; margin-bottom:14px; }
-    .novo input { background:var(--fundo); border:1px solid var(--borda); color:var(--texto); border-radius:6px; padding:8px 10px; font-size:13px; }
-    table { width:100%; border-collapse:collapse; font-size:13px; }
-    th, td { border:1px solid var(--borda); padding:8px 10px; text-align:left; }
-    th { background:var(--carta); color:var(--suave); }
-    .badge { padding:2px 10px; border-radius:999px; font-size:11px; font-weight:700; }
-    .agendado { background:var(--azul); color:#fff; } .concluido { background:var(--verde); color:#fff; } .cancelado { background:var(--amarelo); color:#111; }
-    .btn-mini { padding:5px 10px; font-size:11px; margin:2px; }
-    .vermelho { background:var(--vermelho); } .amarelo { background:var(--amarelo); color:#111; }
+    :root {
+      color-scheme: light;
+      --fundo: #f4f7f6;
+      --cartao: #fff;
+      --texto: #173b38;
+      --suave: #657d79;
+      --borda: #dce8e4;
+      --verde: #087e70;
+      --verde-escuro: #06695e;
+      --verde-claro: #e5f5f1;
+      --alerta: #9b3c32;
+      --alerta-claro: #fff0ee;
+      --sombra: 0 16px 44px rgba(31, 72, 66, .08);
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--fundo); color: var(--texto); font: 15px/1.5 Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; }
+    button, input, select { font: inherit; }
+    button { cursor: pointer; }
+    button:disabled { cursor: not-allowed; opacity: .55; }
+    .hidden, [hidden] { display: none !important; }
+    .shell { width: min(1120px, calc(100% - 36px)); margin: 0 auto; }
+    .login-screen { min-height: 100vh; display: grid; place-items: center; padding: 28px 0; }
+    .login-card { width: min(440px, 100%); padding: 34px; background: var(--cartao); border: 1px solid var(--borda); border-radius: 22px; box-shadow: var(--sombra); }
+    .brand { display: flex; align-items: center; gap: 12px; font-weight: 800; letter-spacing: -.03em; }
+    .brand-mark { width: 42px; height: 42px; display: grid; place-items: center; color: #fff; background: var(--verde); border-radius: 13px; font-size: 21px; }
+    .login-card h1 { margin: 27px 0 5px; font-size: 27px; letter-spacing: -.04em; }
+    .muted { color: var(--suave); }
+    .login-card .muted { margin: 0 0 23px; }
+    .field { display: grid; gap: 6px; margin: 0 0 14px; }
+    .field label { color: var(--texto); font-size: 13px; font-weight: 700; }
+    input, select { width: 100%; min-height: 43px; padding: 9px 12px; color: var(--texto); background: #fff; border: 1px solid var(--borda); border-radius: 10px; outline: none; }
+    input:focus, select:focus { border-color: var(--verde); box-shadow: 0 0 0 3px rgba(8, 126, 112, .13); }
+    button { min-height: 42px; padding: 9px 15px; color: #fff; background: var(--verde); border: 0; border-radius: 10px; font-weight: 750; transition: background .15s, transform .15s; }
+    button:hover:not(:disabled) { background: var(--verde-escuro); transform: translateY(-1px); }
+    button.secondary { color: var(--texto); background: #fff; border: 1px solid var(--borda); }
+    button.secondary:hover:not(:disabled) { color: var(--verde-escuro); background: var(--verde-claro); }
+    button.danger { color: var(--alerta); background: var(--alerta-claro); }
+    button.danger:hover:not(:disabled) { color: #fff; background: var(--alerta); }
+    .wide { width: 100%; }
+    .text-button { min-height: auto; padding: 4px; color: var(--verde); background: none; font-weight: 700; }
+    .text-button:hover:not(:disabled) { color: var(--verde-escuro); background: none; transform: none; text-decoration: underline; }
+    .feedback { margin: 12px 0 0; padding: 10px 12px; color: var(--alerta); background: var(--alerta-claro); border-radius: 9px; font-size: 13px; }
+    .topbar { display: flex; align-items: center; justify-content: space-between; gap: 18px; padding: 19px 0; border-bottom: 1px solid var(--borda); }
+    .topbar-actions { display: flex; align-items: center; gap: 10px; }
+    .plan { padding: 6px 10px; color: var(--verde-escuro); background: var(--verde-claro); border-radius: 999px; font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: .04em; }
+    main { padding: 32px 0 56px; }
+    .intro { display: flex; align-items: end; justify-content: space-between; gap: 20px; margin-bottom: 24px; }
+    .intro h1 { margin: 0 0 4px; font-size: clamp(25px, 4vw, 34px); letter-spacing: -.045em; }
+    .intro p { margin: 0; color: var(--suave); }
+    .workspace { display: grid; grid-template-columns: minmax(220px, 1fr) minmax(260px, 2fr) auto; align-items: end; gap: 14px; padding: 17px; background: var(--cartao); border: 1px solid var(--borda); border-radius: 16px; }
+    .workspace .field { margin: 0; }
+    .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 13px; margin: 18px 0; }
+    .stat { padding: 17px; background: var(--cartao); border: 1px solid var(--borda); border-radius: 15px; }
+    .stat span { display: block; color: var(--suave); font-size: 12px; font-weight: 650; }
+    .stat strong { display: block; margin-top: 5px; font-size: 27px; letter-spacing: -.04em; }
+    .grid { display: grid; grid-template-columns: 1fr 1.35fr; gap: 15px; margin-bottom: 18px; }
+    .card { padding: 20px; background: var(--cartao); border: 1px solid var(--borda); border-radius: 16px; }
+    .card h2 { margin: 0 0 5px; font-size: 17px; letter-spacing: -.02em; }
+    .card > p { margin: 0 0 17px; color: var(--suave); font-size: 13px; }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 11px; }
+    .appointments { overflow: hidden; padding: 0; }
+    .appointments-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 19px 20px; }
+    .appointments-head h2 { margin: 0; }
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; white-space: nowrap; font-size: 13px; }
+    th, td { padding: 12px 15px; border-top: 1px solid var(--borda); text-align: left; }
+    th { color: var(--suave); background: #f9fbfa; font-size: 11px; letter-spacing: .045em; text-transform: uppercase; }
+    .badge { display: inline-flex; padding: 4px 8px; border-radius: 999px; color: #31534e; background: #edf2f0; font-size: 11px; font-weight: 750; }
+    .badge.agendado { color: #075f55; background: var(--verde-claro); }
+    .badge.concluido { color: #275c39; background: #e8f6e9; }
+    .badge.cancelado { color: #815c20; background: #fff4d9; }
+    .row-actions { display: flex; gap: 6px; }
+    .row-actions button { min-height: 31px; padding: 5px 9px; font-size: 11px; }
+    .empty { padding: 32px 20px; color: var(--suave); text-align: center; }
+    .empty strong { display: block; margin-bottom: 4px; color: var(--texto); }
+    .toast { position: fixed; right: 22px; bottom: 22px; z-index: 5; max-width: min(420px, calc(100% - 44px)); padding: 13px 17px; color: #fff; background: #173b38; border-radius: 12px; box-shadow: var(--sombra); }
+    @media (max-width: 760px) {
+      .workspace { grid-template-columns: 1fr 1fr; }
+      .workspace > button { grid-column: 1 / -1; }
+      .grid { grid-template-columns: 1fr; }
+      .stats { grid-template-columns: repeat(2, 1fr); }
+    }
+    @media (max-width: 520px) {
+      .shell { width: min(100% - 24px, 1120px); }
+      .login-card { padding: 25px; }
+      .topbar { align-items: flex-start; }
+      .topbar-actions { flex-wrap: wrap; justify-content: flex-end; }
+      .intro { align-items: flex-start; flex-direction: column; }
+      .workspace { grid-template-columns: 1fr; }
+      .workspace > button { grid-column: auto; }
+      .form-row { grid-template-columns: 1fr; gap: 0; }
+      .appointments-head { align-items: flex-start; flex-direction: column; }
+    }
   </style>
 </head>
 <body>
-  <!-- LOGIN -->
-  <div id="tela-login" class="login">
-    <div class="login-caixa">
-      <h1>🗓️ AgendaFlow</h1>
-      <input id="inp-nome" type="text" placeholder="nome (novo cadastro)" autocomplete="off">
-      <input id="inp-email" type="email" placeholder="e-mail" autocomplete="off">
-      <input id="inp-senha" type="password" placeholder="senha (mín. 6)">
-      <button id="btn-entrar">Entrar / Criar conta</button>
-      <p id="login-erro" class="erro" hidden></p>
+  <section id="tela-login" class="login-screen">
+    <div class="login-card">
+      <div class="brand"><span class="brand-mark" aria-hidden="true">A</span><span>AgendaFlow</span></div>
+      <h1 id="titulo-login">Bem-vindo de volta</h1>
+      <p class="muted" id="subtitulo-login">Entre para organizar os horários do seu negócio.</p>
+      <form id="form-login" novalidate>
+        <div id="campo-nome" class="field hidden"><label for="inp-nome">Seu nome</label><input id="inp-nome" name="name" autocomplete="name" maxlength="120"></div>
+        <div class="field"><label for="inp-email">E-mail</label><input id="inp-email" name="email" type="email" autocomplete="email" required maxlength="254"></div>
+        <div class="field"><label for="inp-senha">Senha</label><input id="inp-senha" name="password" type="password" autocomplete="current-password" required minlength="6" maxlength="128"></div>
+        <button id="btn-entrar" class="wide" type="submit">Entrar</button>
+      </form>
+      <p id="login-erro" class="feedback" role="alert" hidden></p>
+      <p style="margin:16px 0 0;text-align:center;font-size:13px"><span id="texto-alternar">Ainda não tem uma conta?</span> <button id="btn-alternar" class="text-button" type="button">Criar conta</button></p>
     </div>
-  </div>
+  </section>
 
-  <!-- PAINEL -->
   <div id="app" hidden>
-    <div class="topo">
-      <h1>🗓️ AgendaFlow — <span id="org-nome">—</span></h1>
-      <button id="btn-criar-org" class="btn-mini amarelo">+ organização</button>
-      <button id="btn-sair" class="btn-mini vermelho">sair</button>
-    </div>
+    <header class="topbar shell">
+      <div class="brand"><span class="brand-mark" aria-hidden="true">A</span><span>AgendaFlow</span></div>
+      <div class="topbar-actions"><span id="plano-badge" class="plan">free</span><button id="btn-sair" class="secondary" type="button">Sair</button></div>
+    </header>
+    <main class="shell">
+      <section class="intro"><div><h1>Sua agenda, em ordem.</h1><p>Gerencie profissionais e acompanhe os agendamentos do seu negócio.</p></div></section>
+      <section class="workspace" aria-label="Organização selecionada">
+        <div class="field"><label for="org-select">Organização</label><select id="org-select" aria-label="Selecionar organização"></select></div>
+        <form id="form-org" class="field"><label for="org-nome">Criar organização</label><input id="org-nome" required maxlength="120" placeholder="Ex.: Studio Central"></form>
+        <button id="btn-criar-org" type="submit" form="form-org">Criar organização</button>
+      </section>
 
-    <div class="novo">
-      <input id="prof-nome" placeholder="novo profissional" size="14">
-      <input id="prof-area" placeholder="área (corte, consulta...)" size="12">
-      <button id="btn-prof">+ profissional</button>
-    </div>
+      <section class="stats" aria-label="Resumo da agenda">
+        <article class="stat"><span>Agendamentos</span><strong id="stat-total">0</strong></article>
+        <article class="stat"><span>Em aberto</span><strong id="stat-abertos">0</strong></article>
+        <article class="stat"><span>Concluídos</span><strong id="stat-concluidos">0</strong></article>
+        <article class="stat"><span>Cancelados</span><strong id="stat-cancelados">0</strong></article>
+      </section>
 
-    <div class="novo">
-      <input id="ag-prof" placeholder="id do profissional" size="18">
-      <input id="ag-nome" placeholder="nome do cliente" size="14">
-      <input id="ag-email" placeholder="e-mail do cliente" size="16">
-      <input id="ag-data" type="date">
-      <input id="ag-hora" type="time" value="10:00">
-      <button id="btn-agendar">Agendar</button>
-    </div>
+      <section id="workspace-conteudo">
+        <div class="grid">
+          <article class="card">
+            <h2>Equipe</h2><p>Adicione quem atende na organização selecionada.</p>
+            <form id="form-prof">
+              <div class="field"><label for="prof-nome">Nome do profissional</label><input id="prof-nome" required maxlength="120" placeholder="Ex.: Ana Costa"></div>
+              <div class="field"><label for="prof-area">Especialidade</label><input id="prof-area" maxlength="80" placeholder="Ex.: Corte, consulta"></div>
+              <button id="btn-prof" type="submit">Adicionar profissional</button>
+            </form>
+            <p id="lista-profs" class="muted" style="margin:14px 0 0"></p>
+          </article>
+          <article class="card">
+            <h2>Novo agendamento</h2><p>Registre um horário para um cliente.</p>
+            <form id="form-agendar">
+              <div class="field"><label for="ag-prof">Profissional</label><select id="ag-prof" required></select></div>
+              <div class="form-row">
+                <div class="field"><label for="ag-nome">Nome do cliente</label><input id="ag-nome" required maxlength="120"></div>
+                <div class="field"><label for="ag-email">E-mail do cliente</label><input id="ag-email" type="email" required maxlength="254"></div>
+              </div>
+              <div class="form-row">
+                <div class="field"><label for="ag-data">Data</label><input id="ag-data" type="date" required></div>
+                <div class="field"><label for="ag-hora">Horário</label><input id="ag-hora" type="time" value="10:00" required></div>
+              </div>
+              <button id="btn-agendar" type="submit">Salvar agendamento</button>
+            </form>
+          </article>
+        </div>
 
-    <table>
-      <thead><tr><th>Cliente</th><th>Profissional</th><th>Data</th><th>Hora</th><th>Status</th><th>Ações</th></tr></thead>
-      <tbody id="lista"></tbody>
-    </table>
+        <section class="card appointments">
+          <div class="appointments-head"><div><h2>Agendamentos</h2><span id="contador-agendamentos" class="muted" style="font-size:13px"></span></div><button id="btn-atualizar" class="secondary" type="button">Atualizar</button></div>
+          <div class="table-wrap"><table>
+            <thead><tr><th>Cliente</th><th>Profissional</th><th>Data</th><th>Hora</th><th>Status</th><th>Ações</th></tr></thead>
+            <tbody id="lista-agendamentos"></tbody>
+          </table></div>
+          <div id="agenda-vazia" class="empty" hidden><strong>Nenhum agendamento por enquanto</strong>Quando um horário for marcado, ele aparecerá aqui.</div>
+        </section>
+      </section>
+      <section id="org-vazia" class="card empty" hidden><strong>Comece criando sua organização</strong>Depois você poderá adicionar profissionais e registrar atendimentos.</section>
+      <p id="toast" class="toast" role="status" hidden></p>
+    </main>
   </div>
 
   <script>
-    const $ = (s) => document.querySelector(s);
-    let TOKEN = localStorage.getItem('agendaflow_token');
-    let ORG = null;
-    let PROFS = [];
+    const $ = (seletor) => document.querySelector(seletor);
+    let token = localStorage.getItem('agendaflow_token');
+    let organizacao = null;
+    let profissionais = [];
+    let modoConta = 'login';
+    let toastTimer;
 
-    async function api(caminho, opts = {}) {
-      const r = await fetch('/api' + caminho, {
-        ...opts,
-        headers: { 'Content-Type': 'application/json', ...(TOKEN ? { Authorization: `Bearer ${TOKEN}` } : {}) },
-        body: opts.body ? JSON.stringify(opts.body) : undefined
-      });
-      const dados = await r.json().catch(() => ({}));
-      if (!r.ok) throw Object.assign(new Error(dados.erro?.mensagem || r.statusText), { status: r.status });
+    async function api(caminho, opcoes = {}) {
+      const headers = { ...(opcoes.body ? { 'Content-Type': 'application/json' } : {}), ...(token ? { Authorization: `Bearer ${token}` } : {}), ...opcoes.headers };
+      const resposta = await fetch('/api' + caminho, { ...opcoes, headers, body: opcoes.body ? JSON.stringify(opcoes.body) : undefined });
+      const dados = await resposta.json().catch(() => ({}));
+      if (!resposta.ok) {
+        const erro = Object.assign(new Error(dados.erro?.mensagem || 'Não foi possível concluir a solicitação.'), { status: resposta.status });
+        if (resposta.status === 401 && token) {
+          token = null;
+          localStorage.removeItem('agendaflow_token');
+        }
+        throw erro;
+      }
       return dados;
     }
 
-    $('#btn-entrar').addEventListener('click', async () => {
-      const nome = $('#inp-nome').value.trim(), email = $('#inp-email').value.trim(), senha = $('#inp-senha').value;
+    function avisar(mensagem, erro = false) {
+      const el = $('#toast');
+      el.textContent = mensagem;
+      el.style.background = erro ? '#8d352e' : '';
+      el.hidden = false;
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => { el.hidden = true; }, 4200);
+    }
+
+    function mostrarLogin() {
+      $('#app').hidden = true;
+      $('#tela-login').hidden = false;
+      $('#login-erro').hidden = true;
+    }
+
+    function alternarModoConta() {
+      modoConta = modoConta === 'login' ? 'register' : 'login';
+      const cadastro = modoConta === 'register';
+      $('#campo-nome').classList.toggle('hidden', !cadastro);
+      $('#titulo-login').textContent = cadastro ? 'Crie sua conta' : 'Bem-vindo de volta';
+      $('#subtitulo-login').textContent = cadastro ? 'Comece a organizar os horários do seu negócio.' : 'Entre para organizar os horários do seu negócio.';
+      $('#btn-entrar').textContent = cadastro ? 'Criar conta' : 'Entrar';
+      $('#texto-alternar').textContent = cadastro ? 'Já tem uma conta?' : 'Ainda não tem uma conta?';
+      $('#btn-alternar').textContent = cadastro ? 'Entrar' : 'Criar conta';
+      $('#inp-senha').autocomplete = cadastro ? 'new-password' : 'current-password';
+      $('#login-erro').hidden = true;
+    }
+
+    $('#btn-alternar').addEventListener('click', alternarModoConta);
+    $('#form-login').addEventListener('submit', async (evento) => {
+      evento.preventDefault();
+      const botao = $('#btn-entrar');
+      botao.disabled = true;
+      $('#login-erro').hidden = true;
+      const nome = $('#inp-nome').value.trim();
+      const email = $('#inp-email').value.trim();
+      const senha = $('#inp-senha').value;
       try {
-        let dados;
-        try { dados = await api('/login', { method: 'POST', body: { email, senha } }); }
-        catch (e) {
-          if (e.status === 401 && nome && senha.length >= 6) {
-            await api('/register', { method: 'POST', body: { nome, email, senha } });
-            dados = await api('/login', { method: 'POST', body: { email, senha } });
-          } else throw e;
-        }
-        TOKEN = dados.token;
-        localStorage.setItem('agendaflow_token', TOKEN);
-        $('#tela-login').hidden = true;
-        $('#app').hidden = false;
-        iniciar();
-      } catch (e) { const el = $('#login-erro'); el.hidden = false; el.textContent = e.message; }
+        if (modoConta === 'register') await api('/register', { method: 'POST', body: { nome, email, senha } });
+        const dados = await api('/login', { method: 'POST', body: { email, senha } });
+        token = dados.token;
+        localStorage.setItem('agendaflow_token', token);
+        await abrirPainel();
+      } catch (erro) {
+        const mensagem = erro.status === 409 ? 'Este e-mail já tem uma conta. Entre com sua senha.' : erro.message;
+        $('#login-erro').textContent = mensagem;
+        $('#login-erro').hidden = false;
+      } finally { botao.disabled = false; }
     });
 
-    $('#btn-sair').addEventListener('click', () => { localStorage.clear(); location.reload(); });
-    $('#btn-criar-org').addEventListener('click', async () => {
-      const nome = prompt('Nome da organização:');
-      if (!nome) return;
-      ORG = await api('/orgs', { method: 'POST', body: { nome } });
-      $('#org-nome').textContent = nome;
+    $('#btn-sair').addEventListener('click', () => {
+      token = null;
+      organizacao = null;
+      localStorage.removeItem('agendaflow_token');
+      localStorage.removeItem('agendaflow_org');
+      mostrarLogin();
     });
-    $('#btn-prof').addEventListener('click', async () => {
-      const nome = $('#prof-nome').value.trim();
-      if (!nome || !ORG) { alert('crie uma organização primeiro'); return; }
-      await api(`/orgs/${ORG.id}/profissionais`, { method: 'POST', body: { nome, area: $('#prof-area').value } });
-      $('#prof-nome').value = '';
-      carregarProfs();
+
+    async function abrirPainel() {
+      $('#tela-login').hidden = true;
+      $('#app').hidden = false;
+      try {
+        const [orgs, plano] = await Promise.all([api('/orgs'), api('/plano')]);
+        $('#plano-badge').textContent = plano.plano;
+        const seletor = $('#org-select');
+        seletor.replaceChildren();
+        for (const org of orgs) {
+          const opcao = document.createElement('option');
+          opcao.value = org.id;
+          opcao.textContent = org.nome;
+          seletor.append(opcao);
+        }
+        const salva = localStorage.getItem('agendaflow_org');
+        const selecionada = orgs.find((org) => org.id === salva) || orgs[0] || null;
+        organizacao = selecionada;
+        if (selecionada) seletor.value = selecionada.id;
+        $('#workspace-conteudo').hidden = !selecionada;
+        $('#org-vazia').hidden = Boolean(selecionada);
+        if (selecionada) {
+          localStorage.setItem('agendaflow_org', selecionada.id);
+          await carregarOrganizacao();
+        } else {
+          localStorage.removeItem('agendaflow_org');
+          atualizarResumo(null);
+        }
+      } catch (erro) {
+        if (erro.status === 401) mostrarLogin();
+        else avisar(erro.message, true);
+      }
+    }
+
+    $('#org-select').addEventListener('change', async () => {
+      organizacao = { id: $('#org-select').value, nome: $('#org-select').selectedOptions[0]?.textContent || '' };
+      localStorage.setItem('agendaflow_org', organizacao.id);
+      await carregarOrganizacao();
     });
-    $('#btn-agendar').addEventListener('click', async () => {
+
+    $('#form-org').addEventListener('submit', async (evento) => {
+      evento.preventDefault();
+      const botao = $('#btn-criar-org');
+      botao.disabled = true;
+      try {
+        const nova = await api('/orgs', { method: 'POST', body: { nome: $('#org-nome').value.trim() } });
+        $('#org-nome').value = '';
+        await abrirPainel();
+        $('#org-select').value = nova.id;
+        organizacao = nova;
+        localStorage.setItem('agendaflow_org', nova.id);
+        await carregarOrganizacao();
+        avisar('Organização criada. Agora adicione os profissionais.');
+      } catch (erro) { avisar(erro.message, true); }
+      finally { botao.disabled = false; }
+    });
+
+    async function carregarOrganizacao() {
+      if (!organizacao) return;
+      try {
+        const id = encodeURIComponent(organizacao.id);
+        const [listaProfissionais, agendamentos, metricas] = await Promise.all([
+          api(`/orgs/${id}/profissionais`),
+          api(`/agendamentos?orgId=${id}`),
+          api(`/orgs/${id}/analytics`)
+        ]);
+        profissionais = listaProfissionais;
+        renderizarProfissionais();
+        renderizarAgendamentos(agendamentos);
+        atualizarResumo(metricas);
+      } catch (erro) {
+        if (erro.status === 401) mostrarLogin();
+        else avisar(erro.message, true);
+      }
+    }
+
+    function renderizarProfissionais() {
+      const seletor = $('#ag-prof');
+      seletor.replaceChildren();
+      for (const profissional of profissionais) {
+        const opcao = document.createElement('option');
+        opcao.value = profissional.id;
+        opcao.textContent = `${profissional.nome} · ${profissional.area || 'geral'}`;
+        seletor.append(opcao);
+      }
+      seletor.disabled = profissionais.length === 0;
+      $('#btn-agendar').disabled = profissionais.length === 0;
+      $('#lista-profs').textContent = profissionais.length ? profissionais.map((p) => p.nome).join(' · ') : 'Ainda não há profissionais cadastrados.';
+    }
+
+    function atualizarResumo(metricas) {
+      $('#stat-total').textContent = metricas?.total ?? '0';
+      $('#stat-abertos').textContent = metricas?.agendados ?? '0';
+      $('#stat-concluidos').textContent = metricas?.concluidos ?? '0';
+      $('#stat-cancelados').textContent = metricas?.cancelados ?? '0';
+    }
+
+    function renderizarAgendamentos(agendamentos) {
+      const corpo = $('#lista-agendamentos');
+      corpo.replaceChildren();
+      const nomes = new Map(profissionais.map((p) => [p.id, p.nome]));
+      for (const agendamento of agendamentos) {
+        const linha = document.createElement('tr');
+        for (const valor of [agendamento.cliente_nome, nomes.get(agendamento.profissional_id) || '—', agendamento.data, agendamento.hora]) {
+          const celula = document.createElement('td');
+          celula.textContent = valor;
+          linha.append(celula);
+        }
+        const status = document.createElement('td');
+        const badge = document.createElement('span');
+        badge.className = `badge ${agendamento.status}`;
+        badge.textContent = ({ agendado: 'Em aberto', concluido: 'Concluído', cancelado: 'Cancelado' })[agendamento.status] || agendamento.status;
+        status.append(badge);
+        linha.append(status);
+
+        const acoes = document.createElement('td');
+        const grupo = document.createElement('div');
+        grupo.className = 'row-actions';
+        if (agendamento.status === 'agendado') {
+          const editar = document.createElement('button');
+          editar.className = 'secondary';
+          editar.type = 'button';
+          editar.textContent = 'Editar';
+          editar.addEventListener('click', () => editarAgendamento(agendamento));
+          grupo.append(editar);
+          const cancelar = document.createElement('button');
+          cancelar.className = 'secondary';
+          cancelar.type = 'button';
+          cancelar.textContent = 'Cancelar';
+          cancelar.addEventListener('click', () => cancelarAgendamento(agendamento.id));
+          grupo.append(cancelar);
+        }
+        const excluir = document.createElement('button');
+        excluir.className = 'danger';
+        excluir.type = 'button';
+        excluir.textContent = 'Excluir';
+        excluir.addEventListener('click', () => excluirAgendamento(agendamento.id));
+        grupo.append(excluir);
+        acoes.append(grupo);
+        linha.append(acoes);
+        corpo.append(linha);
+      }
+      $('#contador-agendamentos').textContent = `${agendamentos.length} registro(s)`;
+      $('#agenda-vazia').hidden = agendamentos.length > 0;
+      $('.table-wrap').hidden = agendamentos.length === 0;
+    }
+
+    $('#form-prof').addEventListener('submit', async (evento) => {
+      evento.preventDefault();
+      if (!organizacao) return;
+      const botao = $('#btn-prof');
+      botao.disabled = true;
+      try {
+        await api(`/orgs/${encodeURIComponent(organizacao.id)}/profissionais`, { method: 'POST', body: { nome: $('#prof-nome').value.trim(), area: $('#prof-area').value.trim() } });
+        $('#prof-nome').value = '';
+        $('#prof-area').value = '';
+        await carregarOrganizacao();
+        avisar('Profissional adicionado.');
+      } catch (erro) { avisar(erro.message, true); }
+      finally { botao.disabled = false; }
+    });
+
+    $('#form-agendar').addEventListener('submit', async (evento) => {
+      evento.preventDefault();
+      if (!organizacao || !profissionais.length) return;
+      const botao = $('#btn-agendar');
+      botao.disabled = true;
       try {
         await api('/agendamentos', { method: 'POST', body: {
-          orgId: ORG?.id, profissionalId: $('#ag-prof').value.trim(),
-          clienteEmail: $('#ag-email').value.trim(), clienteNome: $('#ag-nome').value.trim(),
-          data: $('#ag-data').value, hora: $('#ag-hora').value } });
-        carregarAgenda();
-      } catch (e) { alert(e.message); }
+          orgId: organizacao.id,
+          profissionalId: $('#ag-prof').value,
+          clienteNome: $('#ag-nome').value.trim(),
+          clienteEmail: $('#ag-email').value.trim(),
+          data: $('#ag-data').value,
+          hora: $('#ag-hora').value
+        } });
+        $('#ag-nome').value = '';
+        $('#ag-email').value = '';
+        await carregarOrganizacao();
+        avisar('Agendamento salvo.');
+      } catch (erro) { avisar(erro.message, true); }
+      finally { botao.disabled = profissionais.length === 0; }
     });
 
-    async function carregarProfs() {
-      if (!ORG) return;
-      PROFS = await api(`/orgs/${ORG.id}/profissionais`);
-      $('#ag-prof').value = PROFS[0]?.id || '';
-    }
-    async function carregarAgenda() {
-      if (!ORG) return;
-      const ags = await api(`/agendamentos?orgId=${ORG.id}`);
-      const nomes = Object.fromEntries(PROFS.map((p) => [p.id, p.nome]));
-      document.getElementById('lista').innerHTML = ags.map((a) => `
-        <tr>
-          <td>${a.cliente_nome}</td><td>${nomes[a.profissional_id] || '—'}</td>
-          <td>${a.data}</td><td>${a.hora}</td>
-          <td><span class="badge ${a.status}">${a.status}</span></td>
-          <td>
-            ${a.status === 'agendado' ? `
-              <button class="btn-mini amarelo" onclick="editar('${a.id}', '${a.data}', '${a.hora}')">editar</button>
-              <button class="btn-mini" onclick="cancelar('${a.id}')">cancelar</button>` : ''}
-            <button class="btn-mini vermelho" onclick="deletar('${a.id}')">deletar</button>
-          </td>
-        </tr>`).join('');
-    }
-    async function editar(id, data, hora) {
-      const novaHora = prompt('Nova hora (HH:MM):', hora);
-      if (!novaHora) return;
-      try { await api(`/agendamentos/${id}`, { method: 'PATCH', body: { hora: novaHora } }); carregarAgenda(); }
-      catch (e) { alert(e.message); }
-    }
-    async function cancelar(id) { await api(`/agendamentos/${id}/cancelar`, { method: 'POST' }); carregarAgenda(); }
-    async function deletar(id) {
-      if (!confirm('Deletar de verdade?')) return;
-      await api(`/agendamentos/${id}`, { method: 'DELETE' });
-      carregarAgenda();
+    async function editarAgendamento(agendamento) {
+      const hora = prompt('Novo horário (HH:MM):', agendamento.hora);
+      if (!hora || hora === agendamento.hora) return;
+      try {
+        await api(`/agendamentos/${encodeURIComponent(agendamento.id)}`, { method: 'PATCH', body: { hora } });
+        await carregarOrganizacao();
+        avisar('Horário atualizado.');
+      } catch (erro) { avisar(erro.message, true); }
     }
 
-    async function iniciar() {
-      ORG = null;
-      $('#org-nome').textContent = 'crie uma organização';
-      carregarAgenda();
+    async function cancelarAgendamento(id) {
+      try {
+        await api(`/agendamentos/${encodeURIComponent(id)}/cancelar`, { method: 'POST' });
+        await carregarOrganizacao();
+        avisar('Agendamento cancelado.');
+      } catch (erro) { avisar(erro.message, true); }
     }
-    if (TOKEN) { $('#tela-login').hidden = true; $('#app').hidden = false; iniciar(); }
+
+    async function excluirAgendamento(id) {
+      if (!confirm('Excluir este registro permanentemente?')) return;
+      try {
+        await api(`/agendamentos/${encodeURIComponent(id)}`, { method: 'DELETE' });
+        await carregarOrganizacao();
+        avisar('Registro excluído.');
+      } catch (erro) { avisar(erro.message, true); }
+    }
+
+    $('#btn-atualizar').addEventListener('click', carregarOrganizacao);
+    const hoje = new Date();
+    const dataLocal = new Date(hoje.getTime() - hoje.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+    $('#ag-data').value = dataLocal;
+    $('#ag-data').min = dataLocal;
+
+    if (token) abrirPainel();
   </script>
 </body>
 </html>

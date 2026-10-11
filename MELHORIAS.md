@@ -510,3 +510,24 @@ git ls-files | grep -c '\\.db$'   # 0
 
 *Fim do plano. Gerado por leitura direta do código em 2026-10-02. Nenhum item já estava corrigido*
 *— todos apontam para defeitos ainda presentes.*
+
+## Registro de execução — 2026-10-11
+
+Foram implementadas mudanças de código para SEC-01–07, BUG-01–04 e IMP-01: segredo JWT mínimo de
+32 bytes, propagação do dono e checagem por organização, detalhe privado, limitadores por IP/e-mail,
+transação e índice parcial para reservas ativas, planos em SQLite, UUID completo e gate de plano nas
+rotas. O painel agora recupera a organização após recarga, oferece seleção de profissional pelo nome,
+mostra analytics e monta os dados em nós DOM com `textContent`. Também foram adicionados limites de
+corpo e cabeçalhos HTTP básicos.
+
+DEVOPS-01 foi aplicado ao índice do Git: `agendaflow.db` deixa de ser rastreado e permanece na cópia
+local; o `.gitignore` cobre arquivos SQLite. Foram adicionados `.env.example`, `.dockerignore` e
+SECURITY.md, o Compose exige o segredo e a documentação agora descreve rotas públicas/privadas e o
+checkout demonstrativo.
+
+O índice parcial de horários só é criado se o banco legado não tiver duplicatas ativas. Se houver,
+os dados são preservados e a aplicação avisa no log; `BEGIN IMMEDIATE` protege novas reservas. Os
+limitadores são em memória e por processo. Um teste de IDOR já constava em alterações locais antes
+desta execução e foi preservado; nenhum teste foi adicionado ou executado, conforme as instruções
+da sessão. A CI também não foi executada. Portanto os itens de TEST-01/02 e a validação final seguem
+pendentes, e os checkboxes do DoD continuam abertos até validação autorizada.

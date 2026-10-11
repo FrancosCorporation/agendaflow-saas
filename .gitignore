@@ -1,5 +1,10 @@
 node_modules/
-package-lock.json
 .env
+.env.*
+!.env.example
 dist/
 *.log
+*.db
+*.db-*
+*.sqlite
+*.sqlite3

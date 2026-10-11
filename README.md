@@ -1,69 +1,104 @@
-# AgendaFlow — Multi-tenant Scheduling SaaS
+# AgendaFlow
 
-![Status](https://img.shields.io/badge/M1%20%2B%20M2-funcionando%20(12%2F12%20testes)-brightgreen)
-![CI](https://img.shields.io/badge/CI-test%20%2B%20license%20check-blue)
-![Node](https://img.shields.io/badge/Node-%3E%3D18-green?logo=node.js&logoColor=white)
-![MongoDB](https://img.shields.io/badge/MongoDB-Mongoose-47A248?logo=mongodb&logoColor=white)
-![React](https://img.shields.io/badge/React-18-61DAFB?logo=react&logoColor=black)
-![License](https://img.shields.io/badge/license-MIT-green)
+Aplicação de agendamentos para pequenos negócios. O painel permite administrar organizações,
+profissionais e horários; a API mantém os dados em SQLite e separa as operações públicas das
+operações do dono.
 
-A production-shaped scheduling SaaS: **multi-tenant** (organizations → professionals →
-availability), JWT + roles (owner/staff/client), freemium plan gating, owner analytics
-dashboard and transactional e-mails.
+## Requisitos
 
-> 🇧🇷 Um SaaS de agendamentos com cara de produção: **multi-tenant** (organização →
-> profissionais → horários), JWT + papéis (dono/equipe/cliente), planos free/pro,
-> dashboard de analytics para o dono e e-mails transacionais.
+- Node.js 22.5 ou superior (usa `node:sqlite`).
+- Docker e Docker Compose, caso prefira executar em contêiner.
+- `JWT_SECRET` com pelo menos 32 bytes.
 
-## Why this project matters
+## Executar localmente
 
-Multi-tenancy, roles and plan-gating are the vocabulary of real SaaS engineering —
-the #1 thing technical recruiters probe ("have you built software as a *product*?").
-AgendaFlow grows out of two working projects of mine
-([Marcacao_Horario](https://github.com/FrancosCorporation/Marcacao_Horario) front +
-[back-end](https://github.com/FrancosCorporation/Marcacao_Horario_Back-End), Node/Mongo, boot-tested)
-upgraded to the patterns of the best open-source SaaS boilerplates.
-
-## Features (roadmap)
-
-- [ ] **M1** — Multi-tenant model, JWT + roles, availability calendar, booking flow
-- [ ] **M2** — Freemium gate (free/pro features), Stripe test-mode checkout, owner dashboard
-- [ ] **M3** — Analytics (bookings/week, no-show), public documented API, e2e tests
-
-## Architecture
-
-```mermaid
-graph TD
-  A[React SPA] --> B[Express API + JWT roles]
-  B --> C[(MongoDB)]
-  B --> D[Stripe test-mode]
-  B --> E[email service]
-  F[owner dashboard] --> B
-```
-
-## Quick start (planned)
+Gere e exporte um segredo para o processo local:
 
 ```bash
-docker compose up   # app + mongo
+export JWT_SECRET="$(openssl rand -hex 32)"
+npm ci
+npm start
 ```
 
-## Built with
+Abra <http://localhost:3111>. Sem `JWT_SECRET` válido, o processo encerra na inicialização. O banco
+local padrão é `agendaflow.db`; ele é ignorado pelo Git. Para usar outro caminho, defina
+`AGENDAFLOW_DB`.
 
-- [wasp-lang/open-saas](https://github.com/wasp-lang/open-saas) (MIT, 16k⭐) — SaaS
-  patterns: org/user/plan entities, admin dashboard, Stripe test flow
-- My boot-tested foundations: Marcacao_Horario (front + back, public) and
-  api_nest_run_container (public, JWT patterns) — simplified new implementation,
-  zero private business logic
+### Docker Compose
 
-## License
+O Compose publica a porta apenas em `127.0.0.1` e mantém o banco em um volume persistente.
+Copie `.env.example` para `.env`, substitua `JWT_SECRET` por um valor gerado com
+`openssl rand -hex 32` e inicie:
 
-MIT — Rodolfo Franco ([FrancosCorporation](https://github.com/FrancosCorporation))
+```bash
+docker compose up --build
+```
 
----
+Para expor o serviço na internet, use um proxy reverso com HTTPS e configure o proxy de confiança
+na aplicação de acordo com a topologia real. O limitador de requisições usa o IP que o Express
+conhece; por padrão, cabeçalhos `X-Forwarded-For` não são confiados.
 
-### 🇧🇷 Sobre (PT-BR)
+## Acesso à API
 
-SaaS de agendamentos multi-tenant evoluído dos meus projetos Marcacao_Horario
-(front+back, boot testado) para os padrões do open-saas (MIT): roles, planos,
-Stripe test-mode, dashboard do dono e analytics. Roadmap de 3 milestones no
-PROJETOS_RH.md do workspace.
+As rotas públicas sustentam o fluxo de marcação. Rotas que mostram ou alteram dados do negócio
+exigem `Authorization: Bearer <token>` obtido em `/api/login`.
+
+| Acesso | Rota | Uso |
+|---|---|---|
+| Público, limitado | `POST /api/register` | Criar conta de dono |
+| Público, limitado | `POST /api/login` | Entrar e receber token JWT |
+| Público | `GET /api/orgs/:id/profissionais` | Mostrar a equipe disponível |
+| Público | `GET /api/orgs/:id/horarios/:profId?data=YYYY-MM-DD` | Consultar horários livres |
+| Público, limitado | `POST /api/agendamentos` | Marcar horário; o corpo inclui organização, profissional, nome/e-mail do cliente, data e hora |
+| Dono | `GET /api/orgs` | Listar as próprias organizações |
+| Dono | `POST /api/orgs` | Criar organização conforme o plano |
+| Dono | `POST /api/orgs/:id/profissionais` | Adicionar profissional à própria organização |
+| Dono | `GET /api/plano` | Consultar o plano da conta |
+| Dono | `GET /api/orgs/:id/analytics` | Consultar indicadores da organização |
+| Dono | `GET /api/agendamentos?orgId=:id` | Listar agendamentos da própria organização |
+| Dono | `GET /api/agendamentos/:id` | Ver dados de um agendamento da própria organização |
+| Dono | `PATCH /api/agendamentos/:id` | Alterar nome, data ou hora do cliente |
+| Dono | `POST /api/agendamentos/:id/cancelar` | Cancelar sem apagar o histórico |
+| Dono | `DELETE /api/agendamentos/:id` | Excluir permanentemente |
+
+Exemplo de login e chamada autenticada:
+
+```bash
+TOKEN=$(curl -s http://localhost:3111/api/login \
+  -H 'Content-Type: application/json' \
+  -d '{"email":"dono@exemplo.com","senha":"senha-forte"}' | jq -r .token)
+curl http://localhost:3111/api/orgs -H "Authorization: Bearer $TOKEN"
+```
+
+O token identifica o dono e cada consulta ou alteração de dados privados confere o vínculo com a
+organização. O detalhe de agendamento exige autenticação; conhecer o identificador não concede
+acesso aos dados do cliente.
+
+### Limites e persistência
+
+Login e cadastro permitem até 20 tentativas por IP e 5 por e-mail a cada cinco minutos. A criação
+de agendamentos permite até 10 por IP e 5 por e-mail por hora, além de limitar tentativas por
+profissional e data. Ao exceder o limite, a API responde `429` e informa `Retry-After`. Os contadores
+são locais ao processo e reiniciam com ele; uma implantação com várias instâncias precisa de um
+limitador compartilhado.
+
+SQLite impede dois agendamentos ativos no mesmo horário, com transação e índice único parcial. Se
+um banco antigo já tiver duplicatas ativas, a aplicação preserva os registros, avisa no log e não
+cria o índice até que os conflitos sejam tratados. Não apague nem cancele reservas sem revisar os
+dados primeiro.
+
+## Planos e pagamentos
+
+O plano `free` aceita uma organização e um profissional por dono; `pro` libera esses limites. O
+estado do plano fica no SQLite e sobrevive a reinicializações. A rotina de checkout existente gera
+apenas uma sessão de demonstração `cs_test_*`: não há cobrança real nem confirmação de upgrade por
+provedor de pagamento.
+
+Antes de integrar Stripe real, implemente validação de webhook assinado, idempotência de eventos e
+reconciliação de assinaturas. O segredo JWT não tem fallback de desenvolvimento: trocá-lo invalida
+tokens já emitidos, então planeje a rotação.
+
+## Segurança
+
+Consulte [SECURITY.md](SECURITY.md) para relatar vulnerabilidades. Nunca coloque o banco local,
+segredos ou arquivos `.env` no Git.

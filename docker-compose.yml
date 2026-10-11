@@ -2,9 +2,10 @@ services:
   agendaflow:
     build: .
     ports:
-      - "3111:3111"
+      - "127.0.0.1:${PORT:-3111}:${PORT:-3111}"
     environment:
-      JWT_SECRET: ${JWT_SECRET:-troque-em-producao}
+      PORT: ${PORT:-3111}
+      JWT_SECRET: ${JWT_SECRET:?Defina JWT_SECRET no ambiente ou no arquivo .env}
       AGENDAFLOW_DB: /data/agendaflow.db
     volumes:
       - dados:/data

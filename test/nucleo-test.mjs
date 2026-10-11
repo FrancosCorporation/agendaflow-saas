@@ -23,7 +23,7 @@ test('org + profissionais + horários livres', () => {
   const agenda = novaAgenda();
   const u = agenda.registrar({ nome: 'Dono', email: 'dono@agenda.dev', senha: 'segredo123' });
   const org = agenda.criarOrg(u.id, 'Barbearia Franco');
-  const prof = agenda.criarProfissional(org.id, 'Rodolfo', 'corte');
+  const prof = agenda.criarProfissional(u.id, org.id, 'Rodolfo', 'corte');
   assert.equal(agenda.listarProfissionais(org.id).length, 1);
   assert.equal(agenda.horariosLivres(prof.id, DATA).length, 10); // 8h-17h
 });
@@ -32,7 +32,7 @@ test('CRUD: agendar → listar → editar → cancelar → deletar', () => {
   const agenda = novaAgenda();
   const u = agenda.registrar({ nome: 'Dono', email: 'dono@agenda.dev', senha: 'segredo123' });
   const org = agenda.criarOrg(u.id, 'Studio');
-  const prof = agenda.criarProfissional(org.id, 'Rodolfo');
+  const prof = agenda.criarProfissional(u.id, org.id, 'Rodolfo');
 
   // CRIAR
   const ag = agenda.agendar({ orgId: org.id, profissionalId: prof.id, clienteEmail: 'cliente@x.dev', clienteNome: 'Maria', data: DATA, hora: '10:00' });
@@ -41,29 +41,43 @@ test('CRUD: agendar → listar → editar → cancelar → deletar', () => {
   assert.ok(!agenda.horariosLivres(prof.id, DATA).includes('10:00'));
 
   // LISTAR
-  assert.equal(agenda.listar(org.id).length, 1);
-  assert.equal(agenda.listar(org.id, { clienteEmail: 'cliente@x.dev' }).length, 1);
+  assert.equal(agenda.listar(u.id, org.id).length, 1);
+  assert.equal(agenda.listar(u.id, org.id, { clienteEmail: 'cliente@x.dev' }).length, 1);
 
   // EDITAR (muda a hora)
-  const editado = agenda.editar(ag.id, { hora: '14:00' });
+  const editado = agenda.editar(u.id, ag.id, { hora: '14:00' });
   assert.equal(editado.hora, '14:00');
   assert.ok(agenda.horariosLivres(prof.id, DATA).includes('10:00'), '10:00 liberou');
 
   // CANCELAR (soft)
-  const cancelado = agenda.cancelar(ag.id);
+  const cancelado = agenda.cancelar(u.id, ag.id);
   assert.equal(cancelado.status, 'cancelado');
-  assert.ok(agenda.listar(org.id, { status: 'cancelado' }).length, 1);
+  assert.ok(agenda.listar(u.id, org.id, { status: 'cancelado' }).length, 1);
 
   // DELETAR (de verdade)
-  const del = agenda.deletar(ag.id);
+  const del = agenda.deletar(u.id, ag.id);
   assert.equal(del.deletado, true);
-  assert.equal(agenda.listar(org.id).length, 0);
+  assert.equal(agenda.listar(u.id, org.id).length, 0);
 });
+test('IDOR (D1): outro dono não lê/edita/cancela/deleta agendamento alheio', () => {
+  const agenda = novaAgenda();
+  const a = agenda.registrar({ nome: 'A', email: 'a@x.dev', senha: 'segredo123' });
+  const b = agenda.registrar({ nome: 'B', email: 'b@x.dev', senha: 'segredo123' });
+  const org = agenda.criarOrg(a.id, 'Studio A');
+  const prof = agenda.criarProfissional(a.id, org.id, 'Rodolfo');
+  const ag = agenda.agendar({ orgId: org.id, profissionalId: prof.id, clienteEmail: 'c@x', clienteNome: 'C', data: DATA, hora: '10:00' });
+  assert.throws(() => agenda.obterDe(b.id, ag.id), /acesso negado/);
+  assert.throws(() => agenda.editar(b.id, ag.id, { hora: '11:00' }), /acesso negado/);
+  assert.throws(() => agenda.cancelar(b.id, ag.id), /acesso negado/);
+  assert.throws(() => agenda.deletar(b.id, ag.id), /acesso negado/);
+  assert.throws(() => agenda.listar(b.id, org.id), /não encontrada/);
+});
+
 
 test('CONFLITO: mesmo profissional, mesmo horário => 409', () => {
   const agenda = novaAgenda();
   const org = agenda.criarOrg('dono', 'S');
-  const prof = agenda.criarProfissional(org.id, 'R');
+  const prof = agenda.criarProfissional('dono', org.id, 'R');
   agenda.agendar({ orgId: org.id, profissionalId: prof.id, clienteEmail: 'a@x', clienteNome: 'A', data: DATA, hora: '09:00' });
   assert.throws(() =>
     agenda.agendar({ orgId: org.id, profissionalId: prof.id, clienteEmail: 'b@x', clienteNome: 'B', data: DATA, hora: '09:00' }),
@@ -73,8 +87,8 @@ test('CONFLITO: mesmo profissional, mesmo horário => 409', () => {
 test('CONFLITO: profissionais DIFERENTES no mesmo horário => OK', () => {
   const agenda = novaAgenda();
   const org = agenda.criarOrg('dono', 'S');
-  const p1 = agenda.criarProfissional(org.id, 'R1');
-  const p2 = agenda.criarProfissional(org.id, 'R2');
+  const p1 = agenda.criarProfissional('dono', org.id, 'R1');
+  const p2 = agenda.criarProfissional('dono', org.id, 'R2');
   agenda.agendar({ orgId: org.id, profissionalId: p1.id, clienteEmail: 'a@x', clienteNome: 'A', data: DATA, hora: '09:00' });
   const ag2 = agenda.agendar({ orgId: org.id, profissionalId: p2.id, clienteEmail: 'b@x', clienteNome: 'B', data: DATA, hora: '09:00' });
   assert.equal(ag2.status, 'agendado');
@@ -83,19 +97,19 @@ test('CONFLITO: profissionais DIFERENTES no mesmo horário => OK', () => {
 test('editar com conflito rejeitado (exceto o próprio)', () => {
   const agenda = novaAgenda();
   const org = agenda.criarOrg('dono', 'S');
-  const prof = agenda.criarProfissional(org.id, 'R');
+  const prof = agenda.criarProfissional('dono', org.id, 'R');
   const ag1 = agenda.agendar({ orgId: org.id, profissionalId: prof.id, clienteEmail: 'a@x', clienteNome: 'A', data: DATA, hora: '09:00' });
   const ag2 = agenda.agendar({ orgId: org.id, profissionalId: prof.id, clienteEmail: 'b@x', clienteNome: 'B', data: DATA, hora: '11:00' });
   // editar ag2 para 09:00 (ocupado pelo ag1) => conflito
-  assert.throws(() => agenda.editar(ag2.id, { hora: '09:00' }), /já ocupado/);
+  assert.throws(() => agenda.editar('dono', ag2.id, { hora: '09:00' }), /já ocupado/);
   // editar ag1 para a PRÓPRIA hora => ok
-  assert.equal(agenda.editar(ag1.id, { hora: '09:00' }).hora, '09:00');
+  assert.equal(agenda.editar('dono', ag1.id, { hora: '09:00' }).hora, '09:00');
 });
 
 test('dados inválidos: data/hora malformadas rejeitadas', () => {
   const agenda = novaAgenda();
   const org = agenda.criarOrg('d', 'S');
-  const prof = agenda.criarProfissional(org.id, 'R');
+  const prof = agenda.criarProfissional('d', org.id, 'R');
   assert.throws(() => agenda.agendar({ orgId: org.id, profissionalId: prof.id, clienteEmail: 'a@x', clienteNome: 'A', data: '05/10/2026', hora: '09:00' }), /YYYY-MM-DD/);
   assert.throws(() => agenda.agendar({ orgId: org.id, profissionalId: prof.id, clienteEmail: 'a@x', clienteNome: 'A', data: DATA, hora: '9h' }), /HH:MM/);
 });
