@@ -5,9 +5,7 @@ import jwt from 'jsonwebtoken';
 import { DatabaseSync } from 'node:sqlite';
 import { randomUUID } from 'node:crypto';
 
-const SEGREDO = process.env.JWT_SECRET ?? (
-  process.env.NODE_ENV === 'test' ? 'agendaflow-test-secret-only-32-bytes-min' : undefined
-);
+const SEGREDO = process.env.JWT_SECRET;
 if (!SEGREDO || Buffer.byteLength(SEGREDO, 'utf8') < 32) {
   throw new Error('JWT_SECRET ausente ou curto — defina um segredo com pelo menos 32 bytes.');
 }

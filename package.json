@@ -8,7 +8,7 @@
  "author": "Rodolfo Franco (FrancosCorporation)",
  "scripts": {
   "start": "node server.js",
-  "test": "NODE_ENV=test node --test test/nucleo-test.mjs && NODE_ENV=test node --test test/m2-test.mjs"
+  "test": "JWT_SECRET=agendaflow-test-secret-only-32-bytes-min NODE_ENV=test node --test test/nucleo-test.mjs && JWT_SECRET=agendaflow-test-secret-only-32-bytes-min NODE_ENV=test node --test test/m2-test.mjs"
  },
  "dependencies": {
   "bcryptjs": "^2.4.3",

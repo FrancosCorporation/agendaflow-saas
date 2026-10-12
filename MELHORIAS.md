@@ -1,7 +1,7 @@
 # MELHORIAS — agendaflow-saas
 
 > **Gerado por análise de código em 2026-10-02** · Stack: Node 22 (Express + `node:sqlite` + JWT + BCrypt)
-> Branch `main` · base `3949fe3` (M2: planos + Stripe simulado + analytics, 12/12 testes) · 636 LOC · **2 suites de teste** · CI presente
+> Base histórica da análise: `3949fe3` (02/10/2026). Base de código auditada: `63fc144` (11/10/2026); esta publicação também fecha o hardening final de SEC-01.
 >
 > **Este arquivo é um plano de execução.** Cada item tem ID, `arquivo:linha`, mudança exata,
 > critério de aceite e comando de verificação.
@@ -12,8 +12,9 @@
 
 1. Execute na ordem **P0 → P1 → P2 → P3**, respeitando as ondas da §8.
 2. Ao terminar um item: marque `- [x]`, rode o **Verificação**, comite `fix(<ID>): descrição`.
-3. **Não reescreva o núcleo.** `src/nucleo.js` tem SQL parametrizado, transação implícita e 12
-   testes verdes — os defeitos são de **autorização e de configuração**, não de modelagem.
+3. As descrições de código/linhas abaixo registram a análise histórica de 02/10. Use a coluna de
+   estado da reauditoria antes de tratar um defeito como atual; as correções de autorização já estão
+   no HEAD revisado.
 4. **O agendamento público é intencional** (`POST /api/agendamentos` sem auth, `server.js:40` —
    é como cliente marca horário). Não "corrija" fechando-o; proteja-o de outro jeito (`SEC-05`).
 5. **Idioma:** português; commits em inglês com `fix:`/`feat:`/`docs:`.
@@ -23,8 +24,13 @@
 ## 1. Diagnóstico executivo
 
 SaaS de agendamentos multi-tenant: donos criam organizações e profissionais, clientes agendam por
-horário livre, e o M2 adiciona planos (free/pro) com gate, checkout Stripe simulado e analytics do
-dono. São 6 arquivos de código com 12 testes e CI — o projeto mais enxuto e mais testado da Wave 2.
+horário livre, e o M2 adiciona planos (free/pro), checkout Stripe demonstrativo e analytics.
+
+A análise original de 02/10 descrevia falhas que foram implementadas em commits posteriores. Na
+reauditoria estática de 11/10, SEC-02–07, BUG-01–04, IMP-01, DEVOPS-01–02 e DOC-01–02 aparecem
+corrigidos no código/documentação do HEAD `63fc144`. SEC-01 ainda tinha um segredo conhecido de teste;
+a alteração local atual removeu essa exceção. Esta revisão não executou testes nem iniciou o servidor,
+portanto aceites HTTP, concorrência e inicialização sem segredo seguem sem validação dinâmica.
 
 **O que está bem (não refaça):**
 
@@ -37,37 +43,38 @@ dono. São 6 arquivos de código com 12 testes e CI — o projeto mais enxuto e 
 | Path traversal bloqueado no estático | `server.js:53` |
 | Erro mapeado para status (401/404/409/400) | `server.js:17` |
 | Login com resposta uniforme | `nucleo.js:45` (mesma mensagem para usuário inexistente e senha errada) |
-| CI + 12 testes verdes | `ci.yml`, `test/nucleo-test.mjs` + `test/m2-test.mjs` |
+| CI e 12/12 testes do baseline histórico `3949fe3`; não reexecutados após as correções | `ci.yml`, `test/nucleo-test.mjs` + `test/m2-test.mjs` |
 
-**O que está quebrado:** o token prova identidade, mas nenhum handler de escrita **pergunta se a
-org é do dono**. `listar`, `editar`, `cancelar`, `deletar` e `criarProfissional` aceitam qualquer
-`orgId`/`:id` de qualquer token — BOLA em 5 rotas. Há ainda o fallback de segredo hardcoded, o
-`.db` commitado, planos em memória (perdidos no restart) e `Math.random` no ID de sessão Stripe.
+**Pendências reais após a reauditoria:** planos persistem no SQLite, mas limitadores ficam na memória do
+processo e não coordenam réplicas; o rate limit não substitui confirmação do cliente/CAPTCHA; o cadastro
+ainda diferencia e-mail existente com `409`; bancos legados com horários duplicados não
+recebem índice único até a limpeza manual. Além disso, TEST-01/02 e aceites de HTTP/concorrência não
+foram executados por instrução vigente.
 
 ---
 
 ## 2. Tabela de prioridades
 
-| ID | Título | Sev | Arquivo | Depende de |
-|---|---|---|---|---|
-| SEC-01 | Fallback de segredo JWT hardcoded | **P0** | `src/nucleo.js:8` | — |
-| SEC-02 | BOLA: `listar/editar/cancelar/deletar` sem checagem de dono | **P0** | `src/nucleo.js:89,103,120,128` | SEC-06 |
-| SEC-03 | BOLA: `criarProfissional` em org de outro dono | **P0** | `src/nucleo.js:61` | SEC-06 |
-| SEC-04 | `GET /api/agendamentos/:id` público permite enumeração | **P1** | `server.js:42` | SEC-06 |
-| SEC-05 | `POST /api/agendamentos` público sem rate limit (spam) | **P1** | `server.js:40` | — |
-| SEC-06 | Token verificado mas claims nunca propagadas (`req.usuario` só no server) | **P0** | `server.js:21-27` | — |
-| SEC-07 | Login/register sem rate limit | **P1** | `server.js:30-31` | — |
-| BUG-01 | Race condition no conflito (check-then-insert sem lock) | **P1** | `src/nucleo.js:79-86` | — |
-| BUG-02 | Planos em `Map` na memória (perdidos no restart) | **P1** | `src/m2.js:12` | — |
-| BUG-03 | `Math.random` no ID de sessão Stripe | **P1** | `src/m2.js:44` | — |
-| BUG-04 | `randomUUID().slice(0,10)` truncado (colisão) | **P2** | `src/nucleo.js:56,62,83` | — |
-| IMP-01 | Gate de plano só no M2, bypassável pela rota direta | **P2** | `server.js:34-35` | BUG-02 |
-| TEST-01 | Testes não cobrem BOLA nem dono | **P1** | `test/nucleo-test.mjs` | SEC-02 |
-| TEST-02 | Sem teste de race condition no conflito | **P2** | novo `test/` | BUG-01 |
-| DEVOPS-01 | `agendaflow.db` commitado no repo | **P1** | `agendaflow.db` | — |
-| DEVOPS-02 | Sem `.env.example` | **P2** | *(ausente)* | SEC-01 |
-| DOC-01 | README não documenta o modelo de acesso público vs. dono | **P2** | `README.md` (69 linhas) | SEC-04 |
-| DOC-02 | Stripe simulado não está marcado como simulado no README | **P3** | `README.md` | BUG-03 |
+| ID | Título | Sev | Arquivo | Depende de | Estado na reauditoria 11/10 |
+|---|---|---|---|---|---|
+| SEC-01 | Fallback de segredo JWT hardcoded | **P0** | `src/nucleo.js:8` | — | Implementado: exige `JWT_SECRET`; validado estaticamente após remover fallback de teste. Sem iniciar processo. |
+| SEC-02 | BOLA: `listar/editar/cancelar/deletar` sem checagem de dono | **P0** | `src/nucleo.js:89,103,120,128` | SEC-06 | Implementado no núcleo: operações filtram por dono; HTTP não exercitado. |
+| SEC-03 | BOLA: `criarProfissional` em org de outro dono | **P0** | `src/nucleo.js:61` | SEC-06 | Implementado no núcleo e no gate de plano; HTTP não exercitado. |
+| SEC-04 | `GET /api/agendamentos/:id` público permite enumeração | **P1** | `server.js:42` | SEC-06 | Implementado: detalhe exige autenticação e checa dono; HTTP não exercitado. |
+| SEC-05 | `POST /api/agendamentos` público sem rate limit (spam) | **P1** | `server.js:40` | — | Implementado: limites por IP/e-mail e IP+profissional+data; armazenamento local ao processo; sem stress. |
+| SEC-06 | Token verificado mas claims nunca propagadas (`req.usuario` só no server) | **P0** | `server.js:21-27` | — | Implementado: `sub` do JWT é propagado aos métodos que consultam dados privados. |
+| SEC-07 | Login/register sem rate limit | **P1** | `server.js:30-31` | — | Parcial: limites por IP/e-mail; registro ainda distingue e-mail existente com `409`. |
+| BUG-01 | Race condition no conflito (check-then-insert sem lock) | **P1** | `src/nucleo.js:79-86` | — | Implementado: `BEGIN IMMEDIATE` e índice parcial; duplicatas legadas preservadas; sem validação concorrente. |
+| BUG-02 | Planos em `Map` na memória (perdidos no restart) | **P1** | `src/m2.js:12` | — | Implementado: plano persistido em SQLite; sem validação de reinício. |
+| BUG-03 | `Math.random` no ID de sessão Stripe | **P1** | `src/m2.js:44` | — | Implementado: ID de sessão demonstrativa usa `randomUUID()`. |
+| BUG-04 | `randomUUID().slice(0,10)` truncado (colisão) | **P2** | `src/nucleo.js:56,62,83` | — | Implementado: IDs usam UUID completo; a única ocorrência de `slice(0, 10)` trata data. |
+| IMP-01 | Gate de plano só no M2, bypassável pela rota direta | **P2** | `server.js:34-35` | BUG-02 | Implementado: rotas usam os métodos com gate e retornam `403` para limite de plano. |
+| TEST-01 | Testes não cobrem BOLA nem dono | **P1** | `test/nucleo-test.mjs` | SEC-02 | Pendente: não adicionar/executar testes nesta rodada. |
+| TEST-02 | Sem teste de race condition no conflito | **P2** | novo `test/` | BUG-01 | Pendente: não adicionar/executar testes nesta rodada. |
+| DEVOPS-01 | `agendaflow.db` commitado no repo | **P1** | `agendaflow.db` | — | Implementado: nenhum `.db` no índice; banco local ignorado ainda existe e deve ser preservado na limpeza. |
+| DEVOPS-02 | Sem `.env.example` | **P2** | *(ausente)* | SEC-01 | Implementado: `.env.example` contém `PORT`, `AGENDAFLOW_DB` e placeholder `JWT_SECRET`. |
+| DOC-01 | README não documenta o modelo de acesso público vs. dono | **P2** | `README.md` (69 linhas) | SEC-04 | Implementado: README lista rotas públicas/privadas e autenticação do dono. |
+| DOC-02 | Stripe simulado não está marcado como simulado no README | **P3** | `README.md` | BUG-03 | Implementado: README identifica a sessão Stripe como simulada e lista requisitos para produção. |
 
 **Placar: 4 P0 · 8 P1 · 5 P2 · 1 P3 = 18 itens.**
 
@@ -475,6 +482,8 @@ precisa ler plano persistido) · `DEVOPS-01` antes de qualquer teste novo que es
 
 ## 10. Definição de pronto (DoD)
 
+Os checkboxes abaixo continuam abertos quando o aceite depende de comportamento em runtime ou de testes. A presença da implementação foi conferida por revisão estática; não foi tratada como validação HTTP/concorrência.
+
 **Segurança**
 - [ ] `SEC-01` — sem fallback; sem `JWT_SECRET` (≥32 bytes) o processo não inicia
 - [ ] `SEC-06` — todo método de org/agendamento recebe e filtra por `donoId`
@@ -531,3 +540,22 @@ limitadores são em memória e por processo. Um teste de IDOR já constava em al
 desta execução e foi preservado; nenhum teste foi adicionado ou executado, conforme as instruções
 da sessão. A CI também não foi executada. Portanto os itens de TEST-01/02 e a validação final seguem
 pendentes, e os checkboxes do DoD continuam abertos até validação autorizada.
+
+
+## Reauditoria estática — 2026-10-11
+
+- A árvore `63fc144` já contém as correções de autorização, rate limit, transação/índice parcial,
+  persistência de planos, IDs UUID completos, gate free/pro, remoção do `.db` do índice e documentação
+  descritas na tabela de prioridades. Isso confirma presença no código; não confirma status HTTP nem
+  concorrência em runtime.
+- A revisão encontrou que `src/nucleo.js` ainda aceitava um segredo JWT conhecido quando
+  `NODE_ENV=test`. Removi esse fallback e movi a chave fictícia para as duas invocações de `node --test`
+  do script `npm test`. Assim, a aplicação exige `JWT_SECRET` em qualquer ambiente; a suíte não foi
+  executada.
+- `node --check` de `server.js`, `src/nucleo.js` e `src/m2.js`, parse do `package.json` e
+  `git diff --check` passaram após a alteração. `npm audit --omit=dev` reportou zero vulnerabilidades.
+- `agendaflow.db` não é rastreado e está ignorado, mas existe no checkout local. Antes da limpeza final,
+  preservá-lo fora da cópia do repositório; não ler nem publicar seu conteúdo.
+- Pendências: TEST-01/02 e aceites HTTP/concorrência sem execução; rate limits são locais por processo;
+  registro ainda diferencia e-mail existente com 409; bancos legados com duplicatas ativas precisam de
+  tratamento antes de criar o índice único parcial.
